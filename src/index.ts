@@ -162,6 +162,16 @@ interface RecursiveCharacterTextSplitterParams extends TextSplitterParams {
   separators: string[];
 }
 
+export const SupportedTextSplitterLanguages = [
+  "markdown",
+  "latex",
+  "html",
+] as const;
+
+
+export type SupportedTextSplitterLanguage =
+  (typeof SupportedTextSplitterLanguages)[number];
+
 export class RecursiveCharacterTextSplitter extends TextSplitter implements RecursiveCharacterTextSplitterParams {
   separators: string[] = ["\n\n", "\n", " ", ""];
 
@@ -228,6 +238,113 @@ export class RecursiveCharacterTextSplitter extends TextSplitter implements Recu
       mergedText.push(currentChunk.trim());
     }
     return mergedText;
+  }
+
+  static getSeparatorsForLanguage(language: SupportedTextSplitterLanguage) {
+    if (language === "markdown") {
+      return [
+        // First, try to split along Markdown headings (starting with level 2)
+        "\n## ",
+        "\n### ",
+        "\n#### ",
+        "\n##### ",
+        "\n###### ",
+        // Note the alternative syntax for headings (below) is not handled here
+        // Heading level 2
+        // ---------------
+        // End of code block
+        "```\n\n",
+        // Horizontal lines
+        "\n\n***\n\n",
+        "\n\n---\n\n",
+        "\n\n___\n\n",
+        // Note that this splitter doesn't handle horizontal lines defined
+        // by *three or more* of ***, ---, or ___, but this is not handled
+        "\n\n",
+        "\n",
+        " ",
+        "",
+      ];
+    } else if (language === "latex") {
+      return [
+        // First, try to split along Latex sections
+        "\n\\chapter{",
+        "\n\\section{",
+        "\n\\subsection{",
+        "\n\\subsubsection{",
+
+        // Now split by environments
+        "\n\\begin{enumerate}",
+        "\n\\begin{itemize}",
+        "\n\\begin{description}",
+        "\n\\begin{list}",
+        "\n\\begin{quote}",
+        "\n\\begin{quotation}",
+        "\n\\begin{verse}",
+        "\n\\begin{verbatim}",
+
+        // Now split by math environments
+        "\n\\begin{align}",
+        "$$",
+        "$",
+
+        // Now split by the normal type of lines
+        "\n\n",
+        "\n",
+        " ",
+        "",
+      ];
+    } else if (language === "html") {
+      return [
+        // First, try to split along HTML tags
+        "<body>",
+        "<div>",
+        "<p>",
+        "<br>",
+        "<li>",
+        "<h1>",
+        "<h2>",
+        "<h3>",
+        "<h4>",
+        "<h5>",
+        "<h6>",
+        "<span>",
+        "<table>",
+        "<tr>",
+        "<td>",
+        "<th>",
+        "<ul>",
+        "<ol>",
+        "<header>",
+        "<footer>",
+        "<nav>",
+        // Head
+        "<head>",
+        "<style>",
+        "<script>",
+        "<meta>",
+        "<title>",
+        // Normal type of lines
+        " ",
+        "",
+      ];
+    } else {
+      throw new Error(`Language ${language} is not supported.`);
+    }
+  }
+}
+
+export type MarkdownTextSplitterParams = TextSplitterParams;
+
+export class MarkdownTextSplitter
+  extends RecursiveCharacterTextSplitter
+  implements MarkdownTextSplitterParams {
+  constructor(fields?: Partial<MarkdownTextSplitterParams>) {
+    super({
+      ...fields,
+      separators:
+        RecursiveCharacterTextSplitter.getSeparatorsForLanguage("markdown"),
+    });
   }
 }
 
